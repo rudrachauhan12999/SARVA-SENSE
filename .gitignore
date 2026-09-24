@@ -1,34 +1,18 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-
-# Environment
-.env
-
-# Vector databases / generated data
-chroma_db/
-vectorstore/
-*.faiss
-*.pkl
-
-# Uploaded/generated files
-data/processed/
-data/uploads/
-
-# Node
 node_modules/
+build/
 dist/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
+coverage/
 .DS_Store
-Thumbs.db
-# RAG generated vector data
-rag/data/faiss.index
-rag/data/metadata.pkl
+*.log
+.env*
+!.env.example
+!backend/.env.example
+
+# Backend runtime artifacts
+backend/.venv/
+backend/data/chroma/
+backend/data/sarva.db
+backend/data/sarva.db-*
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/

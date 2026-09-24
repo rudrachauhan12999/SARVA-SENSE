@@ -1,187 +1,128 @@
-# VH26-ALGOHOLICS - Machine Troubleshooting System
+# SARVA-SENSE
 
-RAG-based intelligent machine troubleshooting assistant for technicians. This system uses AI to help diagnose and resolve machine errors by querying manuals and maintenance documentation.
+A RAG-based industrial machine troubleshooting assistant. A technician types
+an error code, a symptom, or a machine name, and gets back a structured,
+cited, hallucination-checked answer pulled from the correct OEM manual.
 
-## Project Structure
+This repo contains:
 
-```
-VH26-ALGOHOLICS/
-├── frontend/  
-├── backend/          # FastAPI REST API server
-├── rag/             # RAG pipeline (ingestion, retrieval, generation)
-└── README.md        # This file
-```
+- `/` &mdash; the React/Vite frontend (unchanged UI/UX, now wired to a real backend)
+- `/backend` &mdash; the FastAPI + RAG backend (this is the actual deliverable for
+  the problem statement)
 
-## Quick Start
+---
 
-### Prerequisites
+## Quick start
 
-- Python 3.8 or higher
-- pip (Python package manager)
+### 1. Backend
 
-### 1. Backend Setup and Run
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create environment file
-copy .env.example .env    # Windows
-# or
-cp .env.example .env      # macOS/Linux
-
-# Run the backend server
-uvicorn app.main:app --reload
-```
-
-**Backend will be available at:**
-- API Base: http://localhost:8000
-- Interactive API Docs: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
-
-### 2. RAG Pipeline Setup (Optional)
-
-```bash
-# Navigate to RAG directory
-cd rag
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-copy .env.example .env    # Windows (edit with your API keys)
-# or
-cp .env.example .env      # macOS/Linux (edit with your API keys)
-
-# Ingest demo manuals
-python ingest_manuals.py
-
-# Test RAG pipeline
-python test_rag.py
-```
-
-## API Endpoints
-
-### Health Check
-```bash
-curl http://localhost:8000/health
-```
-
-### Troubleshoot Machine Issue
-```bash
-curl -X POST http://localhost:8000/api/troubleshoot \
-  -H "Content-Type: application/json" \
-  -d '{"query": "E101", "machine": "Machine A", "model": "X200"}'
-```
-
-### List Available Machines
-```bash
-curl http://localhost:8000/api/machines
-```
-
-### List Available Manuals
-```bash
-curl http://localhost:8000/api/manuals
-```
-
-### Upload Manual
-```bash
-curl -X POST http://localhost:8000/api/upload \
-  -F "file=@/path/to/manual.pdf"
-```
-
-## Testing
-
-### Backend Tests
 ```bash
 cd backend
-pytest
-```
-
-### RAG Tests
-```bash
-cd rag
-python test_rag.py
-```
-
-## Development
-
-### Backend Structure
-- `app/main.py` - FastAPI application entry point
-- `app/routes/` - API route handlers
-- `app/models/schemas.py` - Request/response models
-- `app/services/rag_service.py` - RAG integration layer
-- `tests/` - API tests
-
-### RAG Structure
-- `pipeline.py` - Main RAG orchestration
-- `ingestion/` - PDF loading and parsing
-- `chunking/` - Document chunking strategies
-- `embeddings/` - Embedding generation
-- `retrieval/` - Vector search and retrieval
-- `generation/` - LLM-based response generation
-- `conversation/` - Conversation memory management
-
-## Environment Variables
-
-### Backend (.env)
-```
-FRONTEND_URL=http://localhost:5173
-```
-
-### RAG (.env)
-```
-GROQ_API_KEY=your_groq_api_key
-PINECONE_API_KEY=your_pinecone_api_key
-PINECONE_ENVIRONMENT=your_pinecone_environment
-PINECONE_INDEX=machine-manuals
-```
-
-## Troubleshooting
-
-### Port Already in Use
-If port 8000 is already in use, specify a different port:
-```bash
-uvicorn app.main:app --reload --port 8001
-```
-
-### Module Not Found Errors
-Make sure your virtual environment is activated and dependencies are installed:
-```bash
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+cp .env.example .env
+# edit .env and set GROQ_API_KEY and GEMINI_API_KEY
+
+# Generate the 4 bundled sample manuals (only needed once; already included,
+# but re-run any time you want to regenerate them):
+python scripts/generate_sample_manuals.py
+
+# Start the API. On first startup it will seed the machines/manuals tables
+# and ingest the 4 sample manuals (chunk -> embed -> store in ChromaDB +
+# SQLite). This downloads the sentence-transformers model the first time,
+# so it needs internet access once; after that it's fully local.
+uvicorn app.main:app --reload --port 8000
 ```
 
-### RAG API Key Errors
-Ensure your `.env` file in the `rag/` directory contains valid API keys for Groq and Pinecone.
+The API is now live at `http://localhost:8000`. Interactive docs at
+`http://localhost:8000/docs`.
 
-## Contributing
+### 2. Frontend
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests
-4. Submit a pull request
+```bash
+npm install
+echo "VITE_API_BASE_URL=http://localhost:8000" > .env.local
+npm run dev
+```
 
-## License
+Open the printed local URL. The app now talks to the real backend for
+machines, manuals, troubleshooting, manual upload, OCR, and HMI screenshot
+analysis. Voice input, history/plans/reports/settings remain client-side
+(unchanged, per the brief).
 
-[Add your license information here]
+### 3. Tests
+
+```bash
+cd backend
+pytest -v
+```
+
+Covers: successful troubleshooting, ambiguous error code, insufficient
+information, manuals listing, machines listing, manual upload, OCR (success +
+demo fallback), and screenshot analysis. Groq/Gemini calls are monkeypatched
+in tests so the suite doesn't require live API keys to validate the pipeline
+logic; the ambiguity test does rely on the real ingested SQLite/Chroma data
+built at app startup.
+
+> **A note on this environment**: this code was written and the pure-Python
+> pieces (PDF generation, chunking/regex logic) were executed and verified in
+> a sandbox, but the sandbox had no network access and none of
+> fastapi/chromadb/sentence-transformers/groq/google-generativeai installed,
+> so the full server and test suite could not be run end-to-end there. Please
+> run the Quick Start above in an environment with internet access (needed
+> once, to `pip install` and to download the embedding model) to verify.
+
+---
+
+## What's real vs. mocked
+
+| Area | Status |
+|---|---|
+| PDF ingestion, section-aware chunking, page tracking | Real (PyMuPDF + regex, SQLite) |
+| Embeddings | Real (local sentence-transformers, no external API) |
+| Vector store | Real (ChromaDB, persisted to `backend/data/chroma`) |
+| Hybrid retrieval (vector + exact error-code match) | Real |
+| Cross-manual ambiguity resolution | Real (SQLite lookup of which machines mention a code) |
+| Answer generation | Real (Groq) |
+| Hallucination/grounding verification | Real (second independent Groq call auditing each claim) |
+| OCR page analysis | Real (PyMuPDF page render -> Gemini Vision), cached in SQLite |
+| HMI screenshot analysis | Real (Gemini Vision), cached in SQLite |
+| Multilingual answers | Real (language passed to Groq, not a static lookup table) |
+| Voice input | Unchanged &mdash; browser `SpeechRecognition`, as instructed |
+| History / Plans / Reports / Settings | Unchanged &mdash; client-side/localStorage, as instructed |
+| Demo fallback (OCR page 214, HMI sample, E101/overheat on HP-200X) | Real code path, but only triggered when the live Groq/Gemini call throws |
+
+See `backend/ARCHITECTURE.md` for the chunking / retrieval / hallucination-control
+design notes.
+
+---
+
+## Sample manuals (for the demo)
+
+Four synthetic-but-realistic OEM manuals are generated by
+`backend/scripts/generate_sample_manuals.py` and bundled under
+`backend/data/manuals/`:
+
+| Manual | Machine | Notable content |
+|---|---|---|
+| HP-200 Service Manual (219 pages) | HP-200X Hydraulic Press | **E101** = pressure sensor fault (p.214), **E102/E105**, thermal management (p.168) |
+| Hydraulic System Guide & Circuitry (95 pages) | HP-200X | Transducer PX-102 spec & bleed procedure (p.88) |
+| MX-40 CNC Manual (119 pages) | MX-40 CNC Mill | **E101** = spindle bearing thermal warning (p.96) &mdash; **same code, different machine, different meaning** |
+| AC-90 Compressor Manual (79 pages) | AC-90 Compressor | **E044** = filter differential alert (p.52) |
+
+This gives every required demo scenario a real, page-accurate answer:
+
+- **Exact error code**: `E101` with `machineId=hp-200x` &rarr; pressure sensor fault, cites page 214.
+- **Natural language**: "Why is the HP-200X overheating?" &rarr; cites page 168.
+- **Cross-manual ambiguity**: `E101` with no machine selected &rarr; asks to disambiguate between HP-200X and MX-40.
+- **Insufficient information**: a symptom not covered by any manual (e.g. "strange high-pitched noise") &rarr; explicit refusal, not a guess.
+
+Filler pages exist purely so the important sections land on realistic page
+numbers (mirroring "the answer is buried on page 214 of a 400-page manual");
+they're automatically excluded from the vector index for being too short to
+carry information (see `MIN_CHUNK_WORDS` in chunking).
+
+To add your own manuals, use the "Upload Manual" page in the UI, or `POST
+/api/manuals/upload`.
