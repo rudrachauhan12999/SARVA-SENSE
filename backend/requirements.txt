@@ -4,6 +4,14 @@ pydantic==2.10.4
 python-multipart==0.0.20
 python-dotenv==1.0.1
 
+# CPU-only torch build -- the plain PyPI wheel pulls ~1.5GB of unused NVIDIA
+# CUDA libraries on a CPU-only deploy target (e.g. Railway). sentence-transformers
+# only needs CPU inference here, so pin the CPU wheel explicitly via PyTorch's
+# own index (kept as an *extra* index so every other package still resolves
+# from PyPI as normal).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
+
 chromadb==0.5.23
 sentence-transformers==3.3.1
 
